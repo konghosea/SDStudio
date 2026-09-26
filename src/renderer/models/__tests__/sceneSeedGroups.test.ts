@@ -36,28 +36,30 @@ describe('sceneSeedGroups', () => {
     expect(resolveSceneSeed(scene, null)).toBeUndefined();
   });
 
-  it('그룹 시드가 공통 시드보다 우선한다', () => {
+  it('공통 시드가 시드 그룹보다 우선한다', () => {
     const { session, scenes } = makeSession('a', 'b');
     const group = createSceneSeedGroup(session, scenes)!;
     expect(setSceneSeedGroupSeed(session, group.id, 987654321)).toBe(true);
-    expect(resolveSceneSeed(scenes[0], 123)).toBe(987654321);
+    expect(resolveSceneSeed(scenes[0], 123)).toBe(123);
     expect(resolveSceneSeed(scenes[1], null)).toBe(987654321);
   });
 
-  it('씬 전용 시드가 시드 그룹과 공통 시드보다 우선한다', () => {
+  it('공통 시드는 씬 기본 시드를 덮어쓰고, 비어 있으면 씬 기본 시드가 그룹보다 우선한다', () => {
     const { session, scenes } = makeSession('a', 'b');
     const group = createSceneSeedGroup(session, scenes)!;
     expect(setSceneSeedGroupSeed(session, group.id, 987654321)).toBe(true);
     scenes[0].sceneSeed = 2468;
-    expect(resolveSceneSeed(scenes[0], 123)).toBe(2468);
-    expect(resolveSceneSeed(scenes[1], 123)).toBe(987654321);
+    expect(resolveSceneSeed(scenes[0], 123)).toBe(123);
+    expect(resolveSceneSeed(scenes[0], null)).toBe(2468);
+    expect(resolveSceneSeed(scenes[1], null)).toBe(987654321);
   });
 
   it('0 시드를 명시값으로 유지한다', () => {
     const { session, scenes } = makeSession('a', 'b');
     const group = createSceneSeedGroup(session, scenes)!;
     expect(setSceneSeedGroupSeed(session, group.id, 0)).toBe(true);
-    expect(resolveSceneSeed(scenes[0], 123)).toBe(0);
+    expect(resolveSceneSeed(scenes[0], null)).toBe(0);
+    expect(resolveSceneSeed(scenes[0], 7)).toBe(7);
   });
 
   it('그룹 삭제 후 표기 문자를 A부터 자동으로 다시 붙인다', () => {
