@@ -536,6 +536,17 @@ export const SceneCell = observer(
         ? scene.mains.includes(outputs[previewIndex])
         : scene.mains.length > 0;
 
+    // 카드가 기본 상태(previewIndex === -1)일 때 화면에 보이는 이미지는
+    // getMainImage와 동일하게 첫 즐겨찾기 → 첫 생성 이미지 순이다.
+    // F 단축키도 "현재 보이는 이미지"를 토글해야 하므로 같은 규칙으로 파일명을 고른다.
+    const currentDisplayedFilename = () => {
+      if (previewIndex >= 0 && previewIndex < totalImages) {
+        return outputs[previewIndex];
+      }
+      if (scene.mains.length > 0) return scene.mains[0];
+      return outputs[0];
+    };
+
     const isInputFocusedLocal = useCallback(() => {
       const el = document.activeElement;
       if (!el) return false;
@@ -590,9 +601,10 @@ export const SceneCell = observer(
         } else if (e.key === 'f' || e.key === 'F') {
           e.preventDefault();
           e.stopPropagation();
-          if (previewIndex < 0 || previewIndex >= totalImages) return;
-          const filename = outputs[previewIndex];
+          const filename = currentDisplayedFilename();
+          if (!filename) return;
           toggleImageMain(curSession!, scene, filename);
+          sessionService.markDirty(curSession!.name);
         }
       };
       window.addEventListener('keydown', handler, true);
@@ -626,9 +638,10 @@ export const SceneCell = observer(
             prev < 0 || prev >= totalImages - 1 ? 0 : prev + 1,
           );
         } else if (detail.action === 'fav') {
-          if (previewIndex < 0 || previewIndex >= totalImages) return;
-          const filename = outputs[previewIndex];
+          const filename = currentDisplayedFilename();
+          if (!filename) return;
           toggleImageMain(curSession!, scene, filename);
+          sessionService.markDirty(curSession!.name);
         }
       };
       window.addEventListener('scene-image-nav', handler);
