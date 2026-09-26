@@ -183,8 +183,11 @@ export function resolveSceneSeed(
   scene: Scene,
   commonSeed?: number | null,
 ): number | undefined {
+  // 메인 생성 화면에서 사용자가 직접 지정한 시드는 일회성/수동 오버라이드로
+  // 가장 우선한다. 비어 있을 때만 씬 기본 시드 → 시드 그룹 순으로 폴백한다.
+  if (validSeed(commonSeed)) return commonSeed;
   if (validSeed(scene.sceneSeed)) return scene.sceneSeed;
   const groupSeed = readSceneSeedGroup(scene)?.seed;
   if (groupSeed !== undefined) return groupSeed;
-  return validSeed(commonSeed) ? commonSeed : undefined;
+  return undefined;
 }
