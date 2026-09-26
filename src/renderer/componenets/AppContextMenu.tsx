@@ -12,7 +12,7 @@ import {
   taskQueueService,
 } from '../models';
 import { appState } from '../models/AppService';
-import { dataUriToBase64, deleteImageFiles, toggleImageMain } from '../models/ImageService';
+import { dataUriToBase64, deleteImageFiles, setImageMain, toggleImageMain } from '../models/ImageService';
 import { createImageWithText, embedJSONInPNG } from '../models/SessionService';
 import {
   SceneContextAlt,
@@ -39,6 +39,7 @@ import {
   dissolveSceneSeedGroup,
   getSceneSeedGroupInfo,
   listSceneSeedGroups,
+  MAX_NAI_SEED,
   removeScenesFromSeedGroups,
 } from '../models/sceneSeedGroups';
 
@@ -122,6 +123,144 @@ export const AppContextMenu = observer(() => {
     }
     sessionService.markDirty(session.name);
     appState.pushMessage('시드 그룹을 해제했습니다.');
+  };
+
+  const setLatestImagesAsFavorites = async (ctx: SceneContextAlt) => {
+    const session = appState.curSession;
+    if (!session || ctx.scene.type !== 'scene') return;
+    const scenes = selectedNormalScenes(ctx.scene);
+    if (scenes.length === 0) return;
+
+    await imageService.refreshBatch(session);
+    let applied = 0;
+    let noImages = 0;
+    let changed = 0;
+
+    for (const scene of scenes) {
+      const outputs = imageService.getOutputs(session, scene);
+      const latest = outputs.length > 0 ? outputs[outputs.length - 1] : undefined;
+      if (!latest) {
+        noImages++;
+        continue;
+      }
+
+      const alreadyOnlyLatest =
+        scene.mains.length === 1 && scene.mains[0] === latest;
+      if (!alreadyOnlyLatest) {
+        for (const main of [...scene.mains]) {
+          setImageMain(session, scene, main, false);
+        }
+        setImageMain(session, scene, latest, true);
+        changed++;
+      }
+      applied++;
+    }
+
+    if (changed > 0) sessionService.markDirty(session.name);
+    const parts = [`${applied}개 씬 최신 이미지를 즐겨찾기로 지정`];
+    if (noImages > 0) parts.push(`${noImages}개 씬 이미지 없음`);
+    appState.pushMessage(parts.join(' · '));
+  };
+
+  const setSceneSeedsFromLatestFavorites = async (ctx: SceneContextAlt) => {
+    const session = appState.curSession;
+    if (!session || ctx.scene.type !== 'scene') return;
+    const scenes = selectedNormalScenes(ctx.scene);
+    if (scenes.length === 0) return;
+
+    await imageService.refreshBatch(session);
+    let applied = 0;
+    let noFavorite = 0;
+    let noSeed = 0;
+    let failed = 0;
+
+    appState.setProgressDialog({
+      text: '즐겨찾기 이미지 시드 읽는 중...',
+      done: 0,
+      total: scenes.length,
+    });
+    try {
+      for (let i = 0; i < scenes.length; i++) {
+        const scene = scenes[i];
+        try {
+          // imageService 출력 순서는 생성/발견 순서를 보존하므로 뒤에서부터 찾아
+          // 즐겨찾기 중 가장 최근 이미지를 고른다. 월드컵 랭킹 정렬은 사용하지 않는다.
+          const outputs = imageService.getOutputs(session, scene);
+          const favoriteSet = new Set(scene.mains);
+          let latestFavorite: string | undefined;
+          for (let j = outputs.length - 1; j >= 0; j--) {
+            if (favoriteSet.has(outputs[j])) {
+              latestFavorite = outputs[j];
+              break;
+            }
+          }
+          if (!latestFavorite) {
+            noFavorite++;
+            continue;
+          }
+
+          const path =
+            imageService.getOutputDir(session, scene) + '/' + latestFavorite;
+          const image = await imageService.fetchImage(path);
+          if (!image) {
+            failed++;
+            continue;
+          }
+          const metadata = await extractPromptDataFromBase64(
+            dataUriToBase64(image),
+          );
+          const seed = metadata?.seed;
+          if (
+            typeof seed !== 'number' ||
+            !Number.isInteger(seed) ||
+            seed < 0 ||
+            seed > MAX_NAI_SEED
+          ) {
+            noSeed++;
+            continue;
+          }
+          scene.sceneSeed = seed;
+          applied++;
+        } catch (e) {
+          failed++;
+          console.error('즐겨찾기 이미지 시드 등록 실패:', scene.name, e);
+        } finally {
+          appState.setProgressDialog({
+            text: '즐겨찾기 이미지 시드 읽는 중...',
+            done: i + 1,
+            total: scenes.length,
+          });
+        }
+      }
+    } finally {
+      appState.setProgressDialog(undefined);
+    }
+
+    if (applied > 0) sessionService.markDirty(session.name);
+    const parts = [`${applied}개 씬 기본 시드 등록`];
+    if (noFavorite > 0) parts.push(`${noFavorite}개 즐겨찾기 없음`);
+    if (noSeed > 0) parts.push(`${noSeed}개 시드 정보 없음`);
+    if (failed > 0) parts.push(`${failed}개 읽기 실패`);
+    appState.pushMessage(parts.join(' · '));
+  };
+
+  const clearSelectedSceneSeeds = (ctx: SceneContextAlt) => {
+    const session = appState.curSession;
+    if (!session || ctx.scene.type !== 'scene') return;
+    const scenes = selectedNormalScenes(ctx.scene);
+    let changed = 0;
+    for (const scene of scenes) {
+      if (scene.sceneSeed !== undefined) {
+        scene.sceneSeed = undefined;
+        changed++;
+      }
+    }
+    if (changed === 0) {
+      appState.pushMessage('해제할 씬 기본 시드가 없습니다.');
+      return;
+    }
+    sessionService.markDirty(session.name);
+    appState.pushMessage(`${changed}개 씬의 기본 시드를 해제했습니다.`);
   };
 
   const duplicateScene = async (ctx: SceneContextAlt) => {
@@ -528,6 +667,12 @@ export const AppContextMenu = observer(() => {
           appState.selectedSceneCount(ctx.scene.type) > 0,
         );
       }
+    } else if (id === 'latest-image-favorite') {
+      void setLatestImagesAsFavorites(ctx);
+    } else if (id === 'favorite-seed-to-scene') {
+      void setSceneSeedsFromLatestFavorites(ctx);
+    } else if (id === 'scene-seed-clear') {
+      clearSelectedSceneSeeds(ctx);
     } else if (id === 'seed-group-set') {
       void configureSceneSeedGroup(ctx);
     } else if (id === 'seed-group-remove') {
@@ -964,6 +1109,28 @@ export const AppContextMenu = observer(() => {
             : '해당 씬 해상도 변경'}
         </Item>
         <Separator />
+        {appState.contextSceneType === 'scene' && (
+          <Item id="latest-image-favorite" onClick={handleSceneItemClick}>
+            {selCount > 0
+              ? `선택한 씬 최신 이미지를 즐겨찾기로 지정 (${selCount})`
+              : '최신 이미지를 즐겨찾기로 지정'}
+          </Item>
+        )}
+        {appState.contextSceneType === 'scene' && (
+          <Item id="favorite-seed-to-scene" onClick={handleSceneItemClick}>
+            {selCount > 0
+              ? `선택한 씬 즐겨찾기 최신 이미지 시드 등록 (${selCount})`
+              : '즐겨찾기 최신 이미지의 시드를 기본 시드로 등록'}
+          </Item>
+        )}
+        {appState.contextSceneType === 'scene' && (
+          <Item id="scene-seed-clear" onClick={handleSceneItemClick}>
+            {selCount > 0
+              ? `선택한 씬 기본 시드 해제 (${selCount})`
+              : '현재 씬 기본 시드 해제'}
+          </Item>
+        )}
+        {appState.contextSceneType === 'scene' && <Separator />}
         {selCount > 1 && (
           <Item id="seed-group-set" onClick={handleSceneItemClick}>
             선택한 씬 시드 그룹 설정 ({selCount})
