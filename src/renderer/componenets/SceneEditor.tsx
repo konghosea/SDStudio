@@ -344,7 +344,7 @@ export const BigPromptEditor = observer(
                 />
               </div>
 
-              <div className="flex-none font-bold text-sub">씬 전용 시드</div>
+              <div className="flex-none font-bold text-sub">씬별 기본 시드</div>
               <div className="flex-none">
                 <input
                   className="w-full gray-input"
@@ -354,7 +354,7 @@ export const BigPromptEditor = observer(
                   step={1}
                   disabled={editDisabled}
                   value={getSceneSeed ? (getSceneSeed() ?? '') : ''}
-                  placeholder="비워두면 시드 그룹/공통 시드 사용"
+                  placeholder="공통 시드가 비어 있을 때 사용하는 기본값"
                   onChange={(e) => {
                     if (!setSceneSeed) return;
                     const raw = e.target.value.trim();
@@ -373,7 +373,7 @@ export const BigPromptEditor = observer(
                   }}
                 />
                 <div className="mt-1 text-xs text-faint">
-                  우선순위: 씬 전용 → 시드 그룹 → 공통 시드 → 랜덤
+                  우선순위: 공통 시드 → 씬 기본 시드 → 시드 그룹 → 랜덤
                 </div>
               </div>
             </div>
