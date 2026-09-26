@@ -167,6 +167,31 @@ describe('combinationMiddlePrompt — 빈 조각 제외 후 조인', () => {
 });
 
 describe('createSDPrompts — 생성 구획 메타데이터', () => {
+  it('씬 초상위 프롬프트를 상위·추가·중간·하위보다 먼저 배치한다', async () => {
+    const indexMock = jest.requireMock('../index');
+    indexMock.promptService.parseWord = (word: string) => ({
+      type: 'text',
+      text: word,
+    });
+    const s = scene([[piece('middle')]]);
+    s.sceneSuperPrompt = 'super';
+    const session = { extraPrompt: 'extra' } as any;
+    const preset = {
+      type: 'SDImageGen',
+      frontPrompt: 'front',
+      backPrompt: 'back',
+    };
+    const shared = { type: 'SDImageGen' };
+
+    const prompts = await createSDPrompts(session, preset, shared, s);
+    expect(prompts).toHaveLength(1);
+    expect(
+      prompts[0].type === 'group'
+        ? prompts[0].children.map((child: any) => child.text)
+        : [],
+    ).toEqual(['super', 'front', 'extra', 'middle', 'back']);
+  });
+
   it('각 조합에 상위·추가·중간·하위 원본 구획을 붙인다', async () => {
     const indexMock = jest.requireMock('../index');
     indexMock.promptService.parseWord = (word: string) => ({

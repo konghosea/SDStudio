@@ -88,6 +88,7 @@ import {
   SceneCharacterPromptMode,
   setSceneCharacterPromptMode,
 } from '../models/sceneCharacterPrompts';
+import { MAX_NAI_SEED } from '../models/sceneSeedGroups';
 
 interface Props {
   scene: Scene;
@@ -168,6 +169,14 @@ interface BigPromptEditorProps {
   simplified?: boolean;
   getSceneUC?: () => string;
   setSceneUC?: (txt: string) => void;
+  getSceneSuperPrompt?: () => string;
+  setSceneSuperPrompt?: (txt: string) => void;
+  getSceneCharacterPromptAppend?: () => string;
+  setSceneCharacterPromptAppend?: (txt: string) => void;
+  getSceneCharacterUCAppend?: () => string;
+  setSceneCharacterUCAppend?: (txt: string) => void;
+  getSceneSeed?: () => number | undefined;
+  setSceneSeed?: (seed: number | undefined) => void;
   /** 모바일 집중 모드(키보드가 떠 편집 중): 이미지·즐겨찾기·진행 막대 영역을 숨기고 편집기가 높이를 전부 쓴다(2026-09-26). */
   keyboardCompact?: boolean;
 }
@@ -189,6 +198,14 @@ export const BigPromptEditor = observer(
     simplified,
     getSceneUC,
     setSceneUC,
+    getSceneSuperPrompt,
+    setSceneSuperPrompt,
+    getSceneCharacterPromptAppend,
+    setSceneCharacterPromptAppend,
+    getSceneCharacterUCAppend,
+    setSceneCharacterUCAppend,
+    getSceneSeed,
+    setSceneSeed,
     keyboardCompact,
   }: BigPromptEditorProps) => {
     const [image, setImage] = useState<string | undefined>(undefined);
@@ -255,26 +272,109 @@ export const BigPromptEditor = observer(
         )}
         {simplified ? (
           <div className={keyboardCompact ? 'overflow-auto flex-1 min-h-0 md:h-auto md:w-1/3 md:h-full' : 'overflow-auto flex-none h-1/3 md:h-auto md:w-1/3 md:h-full'} data-scene-prompt-column={keyboardCompact ? 'compact' : undefined}>
-            <div className="h-full flex flex-col p-2 gap-2 overflow-hidden">
+            <div className="h-full flex flex-col p-2 gap-2 overflow-auto">
+              <div className="flex-none font-bold text-sub">
+                초상위 프롬프트 (이 씬에만 적용됨)
+              </div>
+              <div className="flex-none h-16 min-h-[4rem] overflow-hidden">
+                <PromptEditTextArea
+                  disabled={editDisabled}
+                  onChange={(t) =>
+                    setSceneSuperPrompt && setSceneSuperPrompt(t)
+                  }
+                  value={getSceneSuperPrompt ? getSceneSuperPrompt() : ''}
+                />
+              </div>
+
               <div className="flex-none font-bold text-sub">
                 중간 프롬프트 (이 씬에만 적용됨)
               </div>
-              <div className="flex-[2] min-h-0 overflow-hidden">
+              <div className="flex-none h-24 min-h-[6rem] overflow-hidden">
                 <PromptEditTextArea
                   disabled={editDisabled}
                   onChange={setMiddlePrompt}
                   value={getMiddlePrompt()}
                 />
               </div>
+
               <div className="flex-none font-bold text-sub">
                 씬 전용 네거티브 프롬프트 (이 씬에만 적용됨)
               </div>
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-none h-20 min-h-[5rem] overflow-hidden">
                 <PromptEditTextArea
                   disabled={editDisabled}
                   onChange={(t) => setSceneUC && setSceneUC(t)}
                   value={getSceneUC ? getSceneUC() : ''}
                 />
+              </div>
+
+              <div className="flex-none font-bold text-sub">
+                추가 캐릭터 프롬프트 (이 씬에만 적용됨)
+              </div>
+              <div className="flex-none h-16 min-h-[4rem] overflow-hidden">
+                <PromptEditTextArea
+                  disabled={editDisabled}
+                  onChange={(t) =>
+                    setSceneCharacterPromptAppend &&
+                    setSceneCharacterPromptAppend(t)
+                  }
+                  value={
+                    getSceneCharacterPromptAppend
+                      ? getSceneCharacterPromptAppend()
+                      : ''
+                  }
+                />
+              </div>
+
+              <div className="flex-none font-bold text-sub">
+                추가 캐릭터 네거티브 프롬프트 (이 씬에만 적용됨)
+              </div>
+              <div className="flex-none h-16 min-h-[4rem] overflow-hidden">
+                <PromptEditTextArea
+                  disabled={editDisabled}
+                  onChange={(t) =>
+                    setSceneCharacterUCAppend &&
+                    setSceneCharacterUCAppend(t)
+                  }
+                  value={
+                    getSceneCharacterUCAppend
+                      ? getSceneCharacterUCAppend()
+                      : ''
+                  }
+                />
+              </div>
+
+              <div className="flex-none font-bold text-sub">씬 전용 시드</div>
+              <div className="flex-none">
+                <input
+                  className="w-full gray-input"
+                  type="number"
+                  min={0}
+                  max={MAX_NAI_SEED}
+                  step={1}
+                  disabled={editDisabled}
+                  value={getSceneSeed ? (getSceneSeed() ?? '') : ''}
+                  placeholder="비워두면 시드 그룹/공통 시드 사용"
+                  onChange={(e) => {
+                    if (!setSceneSeed) return;
+                    const raw = e.target.value.trim();
+                    if (raw === '') {
+                      setSceneSeed(undefined);
+                      return;
+                    }
+                    const value = Number(raw);
+                    if (
+                      Number.isInteger(value) &&
+                      value >= 0 &&
+                      value <= MAX_NAI_SEED
+                    ) {
+                      setSceneSeed(value);
+                    }
+                  }}
+                />
+                <div className="mt-1 text-xs text-faint">
+                  우선순위: 씬 전용 → 시드 그룹 → 공통 시드 → 랜덤
+                </div>
               </div>
             </div>
           </div>
@@ -1506,6 +1606,23 @@ const SceneEditor = observer(({ scene, onClosed, onDeleted, initialTab }: Props)
   const setSceneUC = (txt: string) => {
     scene.sceneUC = txt;
   };
+  const getSceneSuperPrompt = () => scene.sceneSuperPrompt ?? '';
+  const setSceneSuperPrompt = (txt: string) => {
+    scene.sceneSuperPrompt = txt;
+  };
+  const getSceneCharacterPromptAppend = () =>
+    scene.sceneCharacterPromptAppend ?? '';
+  const setSceneCharacterPromptAppend = (txt: string) => {
+    scene.sceneCharacterPromptAppend = txt;
+  };
+  const getSceneCharacterUCAppend = () => scene.sceneCharacterUCAppend ?? '';
+  const setSceneCharacterUCAppend = (txt: string) => {
+    scene.sceneCharacterUCAppend = txt;
+  };
+  const getSceneSeed = () => scene.sceneSeed;
+  const setSceneSeed = (seed: number | undefined) => {
+    scene.sceneSeed = seed;
+  };
 
   // 단순 씬 에디터에선 slots 가 비어 있으면 중간 프롬프트 입력이 불가하므로 첫 조각을 보장한다.
   useEffect(() => {
@@ -1631,6 +1748,14 @@ const SceneEditor = observer(({ scene, onClosed, onDeleted, initialTab }: Props)
       simplified={!legacyScene}
       getSceneUC={getSceneUC}
       setSceneUC={setSceneUC}
+      getSceneSuperPrompt={getSceneSuperPrompt}
+      setSceneSuperPrompt={setSceneSuperPrompt}
+      getSceneCharacterPromptAppend={getSceneCharacterPromptAppend}
+      setSceneCharacterPromptAppend={setSceneCharacterPromptAppend}
+      getSceneCharacterUCAppend={getSceneCharacterUCAppend}
+      setSceneCharacterUCAppend={setSceneCharacterUCAppend}
+      getSceneSeed={getSceneSeed}
+      setSceneSeed={setSceneSeed}
       keyboardCompact={focusMode}
     />
   );

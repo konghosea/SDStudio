@@ -114,6 +114,20 @@ function joinPrompt(base: string, addition: string): string {
     .join(', ');
 }
 
+function applySceneCharacterAppends(
+  items: CharacterPrompt[],
+  scene: Scene,
+): CharacterPrompt[] {
+  const promptAppend = scene.sceneCharacterPromptAppend || '';
+  const ucAppend = scene.sceneCharacterUCAppend || '';
+  if (!promptAppend.trim() && !ucAppend.trim()) return items;
+  return items.map((character) => ({
+    ...character,
+    prompt: joinPrompt(character.prompt, promptAppend),
+    uc: joinPrompt(character.uc, ucAppend),
+  }));
+}
+
 export function resolveSceneCharacterPrompts(
   preset: any,
   shared: any,
@@ -123,12 +137,13 @@ export function resolveSceneCharacterPrompts(
   const roles = scene.sceneCharacterPrompts || [];
   const mode = getSceneCharacterPromptMode(scene);
 
-  if (mode === 'base' || roles.length === 0) return [...base];
+  if (mode === 'base' || roles.length === 0)
+    return applySceneCharacterAppends([...base], scene);
 
   if (mode === 'mix') {
     // 역할은 같은 번호의 기본 캐릭터에만 적용한다. 남는 역할은 대기 상태이며
     // 외형 없는 캐릭터를 임의로 만들지 않는다.
-    return base.map((character, index) => {
+    const mixed = base.map((character, index) => {
       const role = roles[index];
       if (!role) return { ...character };
       return {
@@ -140,13 +155,17 @@ export function resolveSceneCharacterPrompts(
           character.enabled !== false && role.enabled !== false,
       };
     });
+    return applySceneCharacterAppends(mixed, scene);
   }
 
   // 기존 씬 전용 동작: 직접입력 캐릭터는 대체하지만 적용된 캐릭터 프리셋은 유지한다.
-  return [
-    ...roles,
-    ...ordered([...(shared?.characterPrompts || [])]),
-  ];
+  return applySceneCharacterAppends(
+    [
+      ...roles,
+      ...ordered([...(shared?.characterPrompts || [])]),
+    ],
+    scene,
+  );
 }
 
 export function usesSceneCharacterPromptData(scene: Scene): boolean {

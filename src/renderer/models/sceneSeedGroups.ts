@@ -183,6 +183,7 @@ export function resolveSceneSeed(
   scene: Scene,
   commonSeed?: number | null,
 ): number | undefined {
+  if (validSeed(scene.sceneSeed)) return scene.sceneSeed;
   const groupSeed = readSceneSeedGroup(scene)?.seed;
   if (groupSeed !== undefined) return groupSeed;
   return validSeed(commonSeed) ? commonSeed : undefined;

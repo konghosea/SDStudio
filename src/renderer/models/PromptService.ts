@@ -480,6 +480,7 @@ export const createSDPrompts = async (
     scene,
     (piece) => piece?.prompt,
     async (promptComb) => {
+      const sceneSuper = toPARR(scene.sceneSuperPrompt ?? '');
       let front = toPARR(preset.frontPrompt);
       if (shared.type === 'SDImageGenEasy') {
         front = front.concat(toPARR(shared.characterPrompt));
@@ -505,6 +506,9 @@ export const createSDPrompts = async (
         }
         front = newFront.concat(rest);
       }
+
+      // 씬 초상위 프롬프트: 기존 상위 프롬프트보다 항상 앞에 둔다.
+      front = sceneSuper.concat(front);
 
       // 추가 프롬프트 (2026-07-18): 상위(및 이지 모드 캐릭터 태그 재배열) 뒤,
       // 중위(씬 전용) 앞에 삽입 — 조합 순서 = 상위→추가→중위→하위.

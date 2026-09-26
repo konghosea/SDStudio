@@ -44,6 +44,15 @@ describe('sceneSeedGroups', () => {
     expect(resolveSceneSeed(scenes[1], null)).toBe(987654321);
   });
 
+  it('씬 전용 시드가 시드 그룹과 공통 시드보다 우선한다', () => {
+    const { session, scenes } = makeSession('a', 'b');
+    const group = createSceneSeedGroup(session, scenes)!;
+    expect(setSceneSeedGroupSeed(session, group.id, 987654321)).toBe(true);
+    scenes[0].sceneSeed = 2468;
+    expect(resolveSceneSeed(scenes[0], 123)).toBe(2468);
+    expect(resolveSceneSeed(scenes[1], 123)).toBe(987654321);
+  });
+
   it('0 시드를 명시값으로 유지한다', () => {
     const { session, scenes } = makeSession('a', 'b');
     const group = createSceneSeedGroup(session, scenes)!;
@@ -79,6 +88,19 @@ describe('sceneSeedGroups', () => {
     setSceneSeedGroupSeed(session, group.id, 42);
     const restored = Scene.fromJSON(scenes[0].toJSON());
     expect(readSceneSeedGroup(restored)).toEqual(readSceneSeedGroup(scenes[0]));
+  });
+
+  it('씬 전용 프롬프트와 시드를 JSON 라운드트립에서 보존한다', () => {
+    const scene = new Scene();
+    scene.sceneSuperPrompt = 'super';
+    scene.sceneCharacterPromptAppend = 'char+';
+    scene.sceneCharacterUCAppend = 'char-';
+    scene.sceneSeed = 0;
+    const restored = Scene.fromJSON(scene.toJSON());
+    expect(restored.sceneSuperPrompt).toBe('super');
+    expect(restored.sceneCharacterPromptAppend).toBe('char+');
+    expect(restored.sceneCharacterUCAppend).toBe('char-');
+    expect(restored.sceneSeed).toBe(0);
   });
 
   it('손상된 메타와 범위 밖 시드는 무시한다', () => {

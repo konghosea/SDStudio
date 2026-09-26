@@ -314,6 +314,10 @@ export interface IScene extends IAbstractScene {
   sceneCharacterPromptMode?: 'base' | 'mix' | 'scene'; // 기본/역할 혼합/씬 전용
   sceneCharacterUC?: string; // 씬 전용 캐릭터 네거티브 프롬프트
   sceneUC?: string; // 씬 전용 네거티브 프롬프트 (생성 시 네거티브 뒤에 붙임)
+  sceneSuperPrompt?: string; // 씬 전용 초상위 프롬프트 (상위 프롬프트보다 먼저 적용)
+  sceneCharacterPromptAppend?: string; // 씬 전용 추가 캐릭터 프롬프트
+  sceneCharacterUCAppend?: string; // 씬 전용 추가 캐릭터 네거티브 프롬프트
+  sceneSeed?: number; // 씬 전용 시드 (시드 그룹/공통 시드보다 우선)
 }
 
 export class Scene extends AbstractScene implements IScene {
@@ -325,6 +329,10 @@ export class Scene extends AbstractScene implements IScene {
   @observable accessor sceneCharacterPromptMode: 'base' | 'mix' | 'scene' | undefined = undefined;
   @observable accessor sceneCharacterUC: string = ''; // 씬 전용 캐릭터 네거티브 프롬프트
   @observable accessor sceneUC: string = ''; // 씬 전용 네거티브 프롬프트 (생성 시 네거티브 뒤에 붙임)
+  @observable accessor sceneSuperPrompt: string = ''; // 씬 전용 초상위 프롬프트
+  @observable accessor sceneCharacterPromptAppend: string = ''; // 씬 전용 추가 캐릭터 프롬프트
+  @observable accessor sceneCharacterUCAppend: string = ''; // 씬 전용 추가 캐릭터 네거티브 프롬프트
+  @observable accessor sceneSeed: number | undefined = undefined; // 씬 전용 시드
 
   static fromJSON(json: IScene): Scene {
     const scene = new Scene();
@@ -346,6 +354,13 @@ export class Scene extends AbstractScene implements IScene {
       : undefined;
     scene.sceneCharacterUC = json.sceneCharacterUC || '';
     scene.sceneUC = json.sceneUC || '';
+    scene.sceneSuperPrompt = json.sceneSuperPrompt || '';
+    scene.sceneCharacterPromptAppend = json.sceneCharacterPromptAppend || '';
+    scene.sceneCharacterUCAppend = json.sceneCharacterUCAppend || '';
+    scene.sceneSeed =
+      typeof json.sceneSeed === 'number' && Number.isInteger(json.sceneSeed)
+        ? json.sceneSeed
+        : undefined;
     return scene;
   }
 
@@ -360,6 +375,10 @@ export class Scene extends AbstractScene implements IScene {
       sceneCharacterPromptMode: this.sceneCharacterPromptMode,
       sceneCharacterUC: this.sceneCharacterUC,
       sceneUC: this.sceneUC,
+      sceneSuperPrompt: this.sceneSuperPrompt,
+      sceneCharacterPromptAppend: this.sceneCharacterPromptAppend,
+      sceneCharacterUCAppend: this.sceneCharacterUCAppend,
+      sceneSeed: this.sceneSeed,
     };
   }
 }
