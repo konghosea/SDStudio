@@ -241,6 +241,31 @@ const SceneSeedGroupBadge = observer(
   },
 );
 
+const SceneLocalSeedClearBadge = observer(
+  ({ session, scene }: SceneSeedGroupBadgeProps) => {
+    if (scene.sceneSeed === undefined) return null;
+    const seed = scene.sceneSeed;
+    return (
+      <Tooltip content={`씬 기본 시드 ${seed} · 클릭해서 지우기`}>
+        <button
+          type="button"
+          className={`absolute ${isMobile ? 'right-[4.75rem]' : 'right-[4.5rem]'} top-1 z-30 touch-hit w-7 h-7 p-0 rounded-full bg-black/55 hover:bg-red-600 text-white text-[10px] font-bold shadow clickable flex items-center justify-center transition-colors`}
+          onClick={(event) => {
+            event.stopPropagation();
+            scene.sceneSeed = undefined;
+            sessionService.markDirty(session.name);
+            appState.pushMessage(`"${scene.name}" 씬 기본 시드를 지웠습니다.`);
+          }}
+          onContextMenu={(event) => event.stopPropagation()}
+          aria-label="씬 기본 시드 지우기"
+        >
+          S×
+        </button>
+      </Tooltip>
+    );
+  },
+);
+
 interface CombinationQuickToggleProps {
   session: Session;
   scene: Scene;
@@ -896,6 +921,10 @@ export const SceneCell = observer(
       scene.type === 'scene' ? (
         <SceneSeedGroupBadge session={curSession} scene={scene} />
       ) : null;
+    const localSeedClearBadge =
+      scene.type === 'scene' ? (
+        <SceneLocalSeedClearBadge session={curSession} scene={scene} />
+      ) : null;
     const combinationQuickToggle =
       scene.type === 'scene' ? (
         <CombinationQuickToggle
@@ -1013,6 +1042,7 @@ export const SceneCell = observer(
             </div>
             <div className="relative">
               {seedGroupBadge}
+              {localSeedClearBadge}
               {combinationQuickToggle}
               <div
                 className={`relative image-cell overflow-hidden ${cellSizes[cellSize]}`}
@@ -1092,6 +1122,7 @@ export const SceneCell = observer(
         >
           <div className="relative">
             {seedGroupBadge}
+            {localSeedClearBadge}
             {combinationQuickToggle}
             <div
               className={`relative image-cell overflow-hidden rounded-md ${
