@@ -309,7 +309,7 @@ export const BigPromptEditor = observer(
               </div>
 
               <div className="flex-none font-bold text-sub">
-                추가 캐릭터 프롬프트 (이 씬에만 적용됨)
+                추가 캐릭터 프롬프트 (별도 슬롯 · 이 씬에만 적용됨)
               </div>
               <div className="flex-none h-16 min-h-[4rem] overflow-hidden">
                 <PromptEditTextArea
@@ -327,7 +327,7 @@ export const BigPromptEditor = observer(
               </div>
 
               <div className="flex-none font-bold text-sub">
-                추가 캐릭터 네거티브 프롬프트 (이 씬에만 적용됨)
+                추가 캐릭터 네거티브 프롬프트 (위 추가 슬롯에 적용됨)
               </div>
               <div className="flex-none h-16 min-h-[4rem] overflow-hidden">
                 <PromptEditTextArea
