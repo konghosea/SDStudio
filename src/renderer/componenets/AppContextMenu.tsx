@@ -162,6 +162,33 @@ export const AppContextMenu = observer(() => {
     appState.pushMessage(parts.join(' · '));
   };
 
+  const clearSelectedSceneFavorites = (ctx: SceneContextAlt) => {
+    const session = appState.curSession;
+    if (!session || ctx.scene.type !== 'scene') return;
+    const scenes = selectedNormalScenes(ctx.scene);
+    let changedScenes = 0;
+    let clearedImages = 0;
+
+    for (const scene of scenes) {
+      if (scene.mains.length === 0) continue;
+      const mains = [...scene.mains];
+      for (const main of mains) {
+        setImageMain(session, scene, main, false);
+      }
+      changedScenes++;
+      clearedImages += mains.length;
+    }
+
+    if (changedScenes === 0) {
+      appState.pushMessage('해제할 즐겨찾기가 없습니다.');
+      return;
+    }
+    sessionService.markDirty(session.name);
+    appState.pushMessage(
+      `${changedScenes}개 씬에서 즐겨찾기 ${clearedImages}개를 해제했습니다.`,
+    );
+  };
+
   const setSceneSeedsFromLatestFavorites = async (ctx: SceneContextAlt) => {
     const session = appState.curSession;
     if (!session || ctx.scene.type !== 'scene') return;
@@ -669,6 +696,8 @@ export const AppContextMenu = observer(() => {
       }
     } else if (id === 'latest-image-favorite') {
       void setLatestImagesAsFavorites(ctx);
+    } else if (id === 'clear-scene-favorites') {
+      clearSelectedSceneFavorites(ctx);
     } else if (id === 'favorite-seed-to-scene') {
       void setSceneSeedsFromLatestFavorites(ctx);
     } else if (id === 'scene-seed-clear') {
@@ -1114,6 +1143,13 @@ export const AppContextMenu = observer(() => {
             {selCount > 0
               ? `선택한 씬 최신 이미지를 즐겨찾기로 지정 (${selCount})`
               : '최신 이미지를 즐겨찾기로 지정'}
+          </Item>
+        )}
+        {appState.contextSceneType === 'scene' && (
+          <Item id="clear-scene-favorites" onClick={handleSceneItemClick}>
+            {selCount > 0
+              ? `선택한 씬 즐겨찾기 전부 해제 (${selCount})`
+              : '현재 씬 즐겨찾기 전부 해제'}
           </Item>
         )}
         {appState.contextSceneType === 'scene' && (
