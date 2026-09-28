@@ -50,7 +50,7 @@ describe('씬 캐릭터 역할 혼합', () => {
     expect(result[1].position.x).toBe(0.8);
   });
 
-  test('씬별 추가 캐릭터 프롬프트와 네거티브는 기본 모드에서도 적용한다', () => {
+  test('씬별 추가 캐릭터 프롬프트는 기존 캐릭터와 합치지 않고 별도 슬롯으로 추가한다', () => {
     const scene = new Scene();
     scene.sceneCharacterPromptAppend = 'wet hair';
     scene.sceneCharacterUCAppend = 'hat';
@@ -67,13 +67,30 @@ describe('씬 캐릭터 역할 혼합', () => {
     );
 
     expect(result.map((item) => item.prompt)).toEqual([
-      'Alice, wet hair',
-      'Bob, wet hair',
+      'Alice',
+      'Bob',
+      'wet hair',
     ]);
     expect(result.map((item) => item.uc)).toEqual([
-      'glasses, hat',
+      'glasses',
+      '',
       'hat',
     ]);
+    expect(result[2].position).toEqual({ x: 0.5, y: 0.5 });
+  });
+
+  test('추가 캐릭터 양성 프롬프트가 비어 있으면 네거티브만으로 슬롯을 만들지 않는다', () => {
+    const scene = new Scene();
+    scene.sceneCharacterUCAppend = 'hat';
+
+    const result = resolveSceneCharacterPrompts(
+      { characterPrompts: [cp('a', 'Alice')] },
+      {},
+      scene,
+    );
+
+    expect(result.map((item) => item.prompt)).toEqual(['Alice']);
+    expect(result.map((item) => item.uc)).toEqual(['']);
   });
 
   test('기본 캐릭터보다 많은 역할은 대기하고 기본의 남는 캐릭터는 유지한다', () => {
