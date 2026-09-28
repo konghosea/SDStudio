@@ -114,18 +114,25 @@ function joinPrompt(base: string, addition: string): string {
     .join(', ');
 }
 
-function applySceneCharacterAppends(
+function appendSceneCharacterSlot(
   items: CharacterPrompt[],
   scene: Scene,
 ): CharacterPrompt[] {
-  const promptAppend = scene.sceneCharacterPromptAppend || '';
-  const ucAppend = scene.sceneCharacterUCAppend || '';
-  if (!promptAppend.trim() && !ucAppend.trim()) return items;
-  return items.map((character) => ({
-    ...character,
-    prompt: joinPrompt(character.prompt, promptAppend),
-    uc: joinPrompt(character.uc, ucAppend),
-  }));
+  const prompt = (scene.sceneCharacterPromptAppend || '').trim();
+  if (!prompt) return items;
+
+  return [
+    ...items,
+    {
+      // 저장 데이터에 캐릭터를 하나 더 만드는 것이 아니라 생성 시점에만 붙는
+      // 씬 로컬 합성 슬롯이다. 기존 캐릭터 프롬프트와 절대 문자열 병합하지 않는다.
+      id: '__scene_additional_character__',
+      prompt,
+      uc: (scene.sceneCharacterUCAppend || '').trim(),
+      position: { x: 0.5, y: 0.5 },
+      enabled: true,
+    },
+  ];
 }
 
 export function resolveSceneCharacterPrompts(
@@ -138,7 +145,7 @@ export function resolveSceneCharacterPrompts(
   const mode = getSceneCharacterPromptMode(scene);
 
   if (mode === 'base' || roles.length === 0)
-    return applySceneCharacterAppends([...base], scene);
+    return appendSceneCharacterSlot([...base], scene);
 
   if (mode === 'mix') {
     // 역할은 같은 번호의 기본 캐릭터에만 적용한다. 남는 역할은 대기 상태이며
@@ -155,11 +162,11 @@ export function resolveSceneCharacterPrompts(
           character.enabled !== false && role.enabled !== false,
       };
     });
-    return applySceneCharacterAppends(mixed, scene);
+    return appendSceneCharacterSlot(mixed, scene);
   }
 
   // 기존 씬 전용 동작: 직접입력 캐릭터는 대체하지만 적용된 캐릭터 프리셋은 유지한다.
-  return applySceneCharacterAppends(
+  return appendSceneCharacterSlot(
     [
       ...roles,
       ...ordered([...(shared?.characterPrompts || [])]),
